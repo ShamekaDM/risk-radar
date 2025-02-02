@@ -1,0 +1,14 @@
+# Ignore virtual environment
+venv/
+
+# Ignore Python cache
+__pycache__/
+
+# Ignore database migrations (if using Alembic)
+database/migrations/
+
+# Ignore frontend node modules
+frontend/node_modules/
+
+# Ignore environment variables (sensitive information)
+.env
