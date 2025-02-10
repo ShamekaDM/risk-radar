@@ -1,17 +1,18 @@
-import React from "react";
-import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Dashboard from './pages/Dashboard';
+import AddThreat from './pages/AddThreat';
+import Settings from './pages/Settings';
+import Navbar from './components/Navbar';
 
 function App() {
   return (
     <Router>
-      <nav>
-        <ul>
-          <li><Link to="/">Dashboard</Link></li>
-        </ul>
-      </nav>
+      <Navbar />
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/add-threat" element={<AddThreat />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </Router>
   );

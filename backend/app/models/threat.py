@@ -6,4 +6,5 @@ class Threat(BaseModel):
     description: str
     severity: str
     location: str
-    timestamp: Optional[str] = None
+    cluster: Optional[str] = None  # Ensure this field exists
+
