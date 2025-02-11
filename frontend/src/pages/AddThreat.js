@@ -21,15 +21,28 @@ const AddThreat = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const newThreat = {
+        title: formData.title,
+        description: formData.description,
+        severity: formData.severity,
+        location: formData.location,
+        latitude: parseFloat(formData.latitude), // Ensure it's a number
+        longitude: parseFloat(formData.longitude) // Ensure it's a number
+    };
+
     try {
-      await axios.post("http://127.0.0.1:8000/threats/", formData);
-      alert("Threat added successfully!");
-      navigate("/"); // Redirect to the dashboard after submission
+        const response = await axios.post("http://127.0.0.1:8000/threats/", newThreat);
+        if (response.status === 200) {
+            alert("Threat added successfully!");
+            setFormData({ title: "", description: "", severity: "Low", location: "", latitude: "", longitude: "" });
+        }
     } catch (error) {
-      console.error("Error adding threat:", error);
-      alert("Failed to add threat.");
+        alert("Failed to add threat");
+        console.error("Error adding threat:", error.response?.data || error);
     }
-  };
+};
+
 
   return (
     <div className="form-container">
@@ -64,6 +77,24 @@ const AddThreat = () => {
           type="text"
           name="location"
           value={formData.location}
+          onChange={handleChange}
+          required
+        />
+
+        <label>Latitude:</label>
+        <input
+          type="numberfloat"
+          name="latitude"
+          value={formData.latitude}
+          onChange={handleChange}
+          required
+        />
+
+        <label>Longitude:</label>
+        <input
+          type="numberfloat"
+          name="longitude"
+          value={formData.longitude}
           onChange={handleChange}
           required
         />

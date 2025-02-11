@@ -1,8 +1,22 @@
-.dashboard-container {
-  width: 80%;
-  margin: 20px auto;
-  text-align: center;
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centers everything */
+  justify-content: center;
+  width: 100%;
+  margin-top: 20px;
 }
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centers table horizontally */
+  justify-content: center;
+  width: 100%;
+  margin-top: 20px;
+  padding-bottom: 50px; /* Adds space below the table */
+}
+
 
 .dashboard-title {
   font-size: 24px;
@@ -10,39 +24,58 @@
   color: #333;
 }
 
-.threat-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: white;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  overflow: hidden;
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px; /* Adds space between search bar and filter */
+  margin-bottom: 20px;
 }
 
+.table-container {
+  margin-bottom: 40px; /* Adds space below the table */
+  padding-bottom: 40px; /* Extra spacing inside */
+}
+
+
+.threat-table {
+  width: 70%; /* Ensures table is centered with space on both sides */
+  margin: 0 auto; /* Centers the table */
+  border-collapse: collapse;
+  background-color: white;
+}
+
+
 .threat-table th, .threat-table td {
-  padding: 12px;
   border: 1px solid #ddd;
-  text-align: left;
+  padding: 10px;
 }
 
 .threat-table th {
-  background-color: #007BFF;
+  background-color: hsl(210, 85%, 45%); /* Ensures correct blue */
   color: white;
+  text-align: center;
+  padding: 10px;
 }
 
-.threat-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+.threat-table td {
+  font-size: 16px;
+}
+
+threat-table tbody tr:hover {
+  background-color: #f5f5f5;
 }
 
 .delete-btn {
-  background-color: #ff4d4d;
-  color: white;
+  background-color: red !important; /* Force red background */
+  color: white !important; /* Ensure text is white */
   border: none;
-  padding: 6px 10px;
+  padding: 8px 12px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 5px;
+  transition: background 0.3s ease;
 }
 
 .delete-btn:hover {
-  background-color: #cc0000;
+  background-color: darkred !important; /* Darker red on hover */
 }
+

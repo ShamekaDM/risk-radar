@@ -4,6 +4,17 @@ from sklearn.cluster import KMeans
 import numpy as np
 from typing import List
 import os
+from pydantic import BaseModel
+
+class ThreatModel(BaseModel):
+    title: str
+    description: str
+    severity: str
+    location: str
+    latitude: float
+    longitude: float
+
+
 
 # Connect to MongoDB
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
@@ -52,19 +63,13 @@ async def get_threats():
     return threats
 
 
-
-
-
 # API to add a threat
 @router.post("/")
-async def create_threat(threat: dict):
-    required_fields = ["title", "description", "severity", "location", "latitude", "longitude"]
-    for field in required_fields:
-        if field not in threat:
-            raise HTTPException(status_code=400, detail=f"Missing field: {field}")
-
-    result = db.threats.insert_one(threat)
+async def create_threat(threat: ThreatModel):
+    threat_dict = threat.dict()
+    result = db.threats.insert_one(threat_dict)
     return {"message": "Threat added", "id": str(result.inserted_id)}
+
 
 # API to delete a threat
 @router.delete("/{threat_id}")
