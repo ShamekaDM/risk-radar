@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pymongo import MongoClient
 from sklearn.cluster import KMeans
 import numpy as np
-from typing import List
+from typing import List, Optional
 import os
 from pydantic import BaseModel
 
@@ -53,13 +53,22 @@ def assign_clusters(threats):
 
 # API to fetch all threats
 @router.get("/", response_model=List[dict])
-async def get_threats():
-    threats = list(db.threats.find({}, {"_id": 0}))  # Restore correct projection
-    
-    if not threats:
-        return []  # Instead of raising 404, return empty list
+async def get_threats(
+    severity: Optional[str] = Query(None, description="Filter threats by severity"),
+    location: Optional[str] = Query(None, description="Filter threats by location")
+):
+    query = {}
+    if severity:
+        query["severity"] = severity
+    if location:
+        query["location"] = location
 
-    threats = assign_clusters(threats)  # Apply clustering
+    threats = list(db.threats.find(query, {"_id": 0}))
+
+    if not threats:
+        return []
+
+    threats = assign_clusters(threats)
     return threats
 
 
