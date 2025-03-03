@@ -1,20 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query
 from pymongo import MongoClient
-from sklearn.cluster import KMeans
-import numpy as np
-from typing import List, Optional
+from datetime import datetime
+from bson import ObjectId
 import os
-from pydantic import BaseModel
-
-class ThreatModel(BaseModel):
-    title: str
-    description: str
-    severity: str
-    location: str
-    latitude: float
-    longitude: float
-
-
+from typing import List, Optional
 
 # Connect to MongoDB
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
@@ -22,34 +11,6 @@ client = MongoClient(MONGO_URI)
 db = client["risk-radar-db"]
 
 router = APIRouter(prefix="/threats", tags=["threats"])
-
-# Function to assign clusters
-def assign_clusters(threats):
-    print("Before clustering:", threats)  # Debugging
-
-    valid_threats = [t for t in threats if "latitude" in t and "longitude" in t]
-    print("Valid threats for clustering:", valid_threats)  # Debugging
-
-    if len(valid_threats) > 1:
-        locations = np.array([[t["latitude"], t["longitude"]] for t in valid_threats])
-        print("Locations array for clustering:", locations)  # Debugging
-
-        kmeans = KMeans(n_clusters=min(len(valid_threats), 5), random_state=42)
-        labels = kmeans.fit_predict(locations)
-
-        for i, threat in enumerate(valid_threats):
-            threat["cluster"] = f"Cluster {labels[i]}"
-            print(f"Threat {threat['title']} assigned to cluster {labels[i]}")  # Debugging
-
-    for threat in threats:
-        if "cluster" not in threat:
-            threat["cluster"] = "N/A"
-
-    print("After clustering:", threats)  # Debugging
-    return threats
-
-
-
 
 # API to fetch all threats
 @router.get("/", response_model=List[dict])
@@ -63,27 +24,37 @@ async def get_threats(
     if location:
         query["location"] = location
 
-    threats = list(db.threats.find(query, {"_id": 0}))
-
-    if not threats:
-        return []
-
-    threats = assign_clusters(threats)
+    threats = list(db.threats.find({}, {"_id": 1, "title": 1, "description": 1, "severity": 1, "location": 1, "type": 1, "timestamp": 1}))
+    
+    # Convert ObjectId to string
+    for threat in threats:
+        threat["_id"] = str(threat["_id"])
+    
     return threats
-
 
 # API to add a threat
 @router.post("/")
-async def create_threat(threat: ThreatModel):
-    threat_dict = threat.dict()
-    result = db.threats.insert_one(threat_dict)
-    return {"message": "Threat added", "id": str(result.inserted_id)}
+async def create_threat(threat: dict):
+    required_fields = ["title", "description", "severity", "location"]
+    
+    for field in required_fields:
+        if field not in threat:
+            raise HTTPException(status_code=400, detail=f"Missing field: {field}")
 
+    # Ensure timestamp is included
+    if "timestamp" not in threat or not threat["timestamp"]:
+        threat["timestamp"] = datetime.utcnow().isoformat()
+
+    result = db.threats.insert_one(threat)
+    return {"message": "Threat added", "id": str(result.inserted_id)}
 
 # API to delete a threat
 @router.delete("/{threat_id}")
 async def delete_threat(threat_id: str):
-    result = db.threats.delete_one({"_id": threat_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Threat not found")
-    return {"message": "Threat deleted successfully"}
+    try:
+        result = db.threats.delete_one({"_id": ObjectId(threat_id)})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Threat not found")
+        return {"message": "Threat deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error deleting threat: {str(e)}")

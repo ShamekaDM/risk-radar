@@ -1,3 +1,10 @@
+.dashboard-container h1 {
+  text-align: center; /* Center the text */
+  font-size: 2rem;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
 .dashboard {
   display: flex;
   flex-direction: column;
@@ -79,3 +86,33 @@ threat-table tbody tr:hover {
   background-color: darkred !important; /* Darker red on hover */
 }
 
+.date-picker {
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background-color: white;
+  width: 150px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.date-picker:hover {
+  border-color: #007bff;
+}
+
+.filter-container {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.filter-container select {
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background-color: white;
+  cursor: pointer;
+}
