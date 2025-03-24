@@ -11,6 +11,7 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />  {/*  Added this line */}
         <Route path="/add-threat" element={<AddThreat />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>

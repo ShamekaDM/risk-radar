@@ -2,7 +2,7 @@ import "../styles/AddThreat.css";
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import DatePicker from "react-datepicker";
+
 import "react-datepicker/dist/react-datepicker.css";
 
 // Mapping of U.S. states to latitude/longitude
@@ -84,44 +84,66 @@ const AddThreat = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const newThreat = {
-        title: formData.title,
-        description: formData.description,
-        severity: formData.severity,
-        type: formData.type,
-        location: formData.location,
-        date: formData.date
-    };
-
-    try {
-        const response = await axios.post("http://127.0.0.1:8000/threats/", newThreat);
-        if (response.status === 200) {
-            alert("Threat added successfully!");
-
-            // Correct confirmation popup
-            const addAnother = window.confirm("Would you like to add another threat?\n\nClick 'OK' for Yes, 'Cancel' for No.");
-            
-            if (addAnother) {
-                // Reset the form for a new threat
-                setFormData({
-                    title: "",
-                    description: "",
-                    severity: "Low",
-                    type: "Unauthorized Access",
-                    location: "",
-                    date: ""
-                });
-            } else {
-                // Redirect to the dashboard if the user selects "No"
-                setTimeout(() => navigate("/dashboard"), 500);
-            }
-        }
-    } catch (error) {
-        alert("Failed to add threat");
-        console.error("Error adding threat:", error.response?.data || error);
+  
+    // ✅ Ensure date is correctly formatted
+    if (!formData.date) {
+      alert("Please select a valid date.");
+      return;
     }
-};
+  
+    const formattedDate = new Date(formData.date).toISOString();
+  
+    const newThreat = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      severity: formData.severity,
+      type: formData.type,
+      location: formData.location,
+      date: formattedDate, //  Ensure ISO format
+    };
+  
+    console.log("Submitting Threat Data:", newThreat); //  Debugging Log
+  
+    try {
+      const response = await axios.post("http://127.0.0.1:8000/threats/", newThreat, {
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      console.log("Server Response:", response); //  Debugging Log
+  
+      //  Accept either 200 or 201 as a valid response
+      if (response.status === 200 || response.status === 201) {
+        alert("Threat added successfully!");
+  
+        // Confirm if user wants to add another threat
+        const addAnother = window.confirm("Would you like to add another threat?\n\nClick 'OK' for Yes, 'Cancel' for No.");
+  
+        if (addAnother) {
+          //  Reset form for new threat entry
+          setFormData({
+            title: "",
+            description: "",
+            severity: "Low",
+            type: "Malware",
+            location: "Alabama",
+            date: new Date().toISOString().split("T")[0], // Reset to today's date
+          });
+        } else {
+          //  Redirect to the dashboard when user cancels
+          navigate("/dashboard");
+        }
+      } else {
+        throw new Error(`Unexpected response status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error adding threat:", error.response?.data || error);
+      alert(`Failed to add threat: ${error.response?.data?.detail || "Unknown error"}`);
+    }
+  };
+  
+  
+  
+  
   return (
     <div className="form-container">
       <h2>Add New Threat</h2>
@@ -141,10 +163,15 @@ const AddThreat = () => {
 
         <label>Type:</label>
         <select name="type" value={formData.type} onChange={handleChange}>
-          <option value="Malware">Malware</option>
-          <option value="Phishing">Phishing</option>
-          <option value="Ransomware">Ransomware</option>
-          <option value="Unauthorized Access">Unauthorized Access</option>
+        <option value="Data Leak">Data Leak</option>
+        <option value="Denial of Service">Denial of Service</option>
+        <option value="Exploit">Exploit</option>
+        <option value="Injection">Injection</option>
+        <option value="Malware">Malware</option>
+        <option value="Network Anomaly">Network Anomaly</option>
+        <option value="Phishing">Phishing</option>
+        <option value="Ransomware">Ransomware</option>
+        <option value="Unauthorized Access">Unauthorized Access</option>
         </select>
 
         <label>Location:</label>

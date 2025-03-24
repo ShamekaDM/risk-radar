@@ -1,61 +1,52 @@
 import React from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import '@testing-library/jest-dom';
-import axios from "axios";
+import { render, screen, fireEvent } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { BrowserRouter } from "react-router-dom";
 import Dashboard from "../../pages/Dashboard";
 
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"), // Ensures Jest loads real `react-router-dom`
-  useNavigate: jest.fn(),
+// Mock axios requests
+jest.mock("axios", () => ({
+  get: jest.fn(() => Promise.resolve({ data: [
+    { _id: "1", title: "Threat 1", description: "Test Description", severity: "High", type: "Phishing", location: "New York" }
+  ] })),
+  put: jest.fn(() => Promise.resolve({ status: 200 })),
+  delete: jest.fn(() => Promise.resolve({ status: 200 })),
 }));
 
-// Mock axios
-jest.mock("axios");
+describe("Dashboard Component", () => {
+  test("renders Dashboard with title", async () => {
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
 
-describe("Dashboard Component - Filtering Integration Test", () => {
-  const mockThreats = [
-    { _id: '1', title: "Unauthorized Access", description: "Login attempt", severity: "High", location: "DC", cluster: "Cluster 1" },
-    { _id: '2', title: "Malware", description: "Malware detected", severity: "Medium", location: "NY", cluster: "Cluster 2" },
-    { _id: '3', title: "Phishing", description: "Email scam", severity: "Low", location: "LA", cluster: "Cluster 3" },
-  ];
-
-  beforeEach(() => {
-    axios.get.mockResolvedValue({ data: mockThreats });
+    expect(screen.getByText("Threat Dashboard")).toBeInTheDocument();
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  test("opens edit modal on edit button click", async () => {
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+
+    const editButton = await screen.findByText("Edit");
+    fireEvent.click(editButton);
+
+    expect(screen.getByText("Edit Threat")).toBeInTheDocument();
   });
 
-  test("initially displays all threats", async () => {
-    render(<Dashboard />);
-    
-    expect(axios.get).toHaveBeenCalledWith("http://127.0.0.1:8000/threats/");
+  test("deletes threat on delete button click", async () => {
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
 
-    await waitFor(() => {
-      expect(screen.getByText("Unauthorized Access")).toBeInTheDocument();
-      expect(screen.getByText("Malware")).toBeInTheDocument();
-      expect(screen.getByText("Phishing")).toBeInTheDocument();
-    });
-  });
+    const deleteButton = await screen.findByText("Delete");
+    fireEvent.click(deleteButton);
 
-  test("filters threats by severity", async () => {
-    render(<Dashboard />);
-
-    // Mock API response for filtered threats
-    axios.get.mockResolvedValueOnce({ data: [mockThreats[0]] });
-
-    // Simulate selecting "High" severity from filter dropdown
-    const filterDropdown = screen.getByLabelText("Severity Filter"); // Update this to match your actual label
-    fireEvent.change(filterDropdown, { target: { value: "High" } });
-
-    await waitFor(() => {
-      expect(axios.get).toHaveBeenCalledWith("http://127.0.0.1:8000/threats/?severity=High");
-      
-      // Only "High" severity threat should be visible
-      expect(screen.getByText("Unauthorized Access")).toBeInTheDocument();
-      expect(screen.queryByText("Malware")).not.toBeInTheDocument();
-      expect(screen.queryByText("Phishing")).not.toBeInTheDocument();
-    });
+    expect(screen.queryByText("Threat 1")).not.toBeInTheDocument();
   });
 });

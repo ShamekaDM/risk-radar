@@ -27,7 +27,12 @@ function Filter({ onSeverityFilter, onTypeFilter, onLocationFilter, onDateRange 
 
       <select onChange={(e) => onTypeFilter(e.target.value)}>
         <option value="All">All Types</option>
+        <option value="Data Leak">Data Leak</option>
+        <option value="Denial of Service">Denial of Service</option>
+        <option value="Exploit">Exploit</option>
+        <option value="Injection">Injection</option>
         <option value="Malware">Malware</option>
+        <option value="Network Anomaly">Network Anomaly</option>
         <option value="Phishing">Phishing</option>
         <option value="Ransomware">Ransomware</option>
         <option value="Unauthorized Access">Unauthorized Access</option>
@@ -88,15 +93,6 @@ function Filter({ onSeverityFilter, onTypeFilter, onLocationFilter, onDateRange 
   <option value="Wyoming">Wyoming</option>
 </select>
 
-<DatePicker
-  selected={startDate}
-  onChange={handleDateChange}
-  startDate={startDate}
-  endDate={endDate}
-  selectsRange
-  dateFormat="yyyy-MM-dd"  // Match MongoDB format
-  placeholderText="Select Date Range"
-/>
     </div>
   );
 }

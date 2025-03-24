@@ -1,118 +1,204 @@
-.dashboard-container h1 {
-  text-align: center; /* Center the text */
+/* ========== General Styles ========== */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 20px;
+  padding-bottom: 100px; /* Ensures space between the table and bottom of the page */
+}
+
+.dashboard-title {
+  text-align: center;
   font-size: 2rem;
   margin-bottom: 20px;
   width: 100%;
 }
 
-.dashboard {
-  display: flex;
-  flex-direction: column;
-  align-items: center; /* Centers everything */
-  justify-content: center;
-  width: 100%;
-  margin-top: 20px;
-}
-
-.dashboard-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center; /* Centers table horizontally */
-  justify-content: center;
-  width: 100%;
-  margin-top: 20px;
-  padding-bottom: 50px; /* Adds space below the table */
-}
-
-
-.dashboard-title {
-  font-size: 24px;
-  margin-bottom: 20px;
-  color: #333;
-}
-
+/* ========== Filters and Controls ========== */
 .controls {
   display: flex;
   justify-content: center;
-  gap: 15px; /* Adds space between search bar and filter */
+  gap: 15px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
+.filter-container {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-container select,
+.search-bar input {
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background-color: white;
+  cursor: pointer;
+}
+
+/* ========== Table Styles ========== */
 .table-container {
-  margin-bottom: 40px; /* Adds space below the table */
-  padding-bottom: 40px; /* Extra spacing inside */
+  margin-bottom: 40px;
+  padding-bottom: 40px;
 }
-
 
 .threat-table {
-  width: 70%; /* Ensures table is centered with space on both sides */
-  margin: 0 auto; /* Centers the table */
+  width: 80%;
+  margin: 0 auto;
   border-collapse: collapse;
   background-color: white;
 }
 
-
 .threat-table th, .threat-table td {
   border: 1px solid #ddd;
   padding: 10px;
+  text-align: center;
 }
 
 .threat-table th {
-  background-color: hsl(210, 85%, 45%); /* Ensures correct blue */
+  background-color: hsl(210, 85%, 45%);
   color: white;
-  text-align: center;
-  padding: 10px;
+  padding: 12px;
 }
 
 .threat-table td {
   font-size: 16px;
 }
 
-threat-table tbody tr:hover {
+.threat-table tbody tr:hover {
   background-color: #f5f5f5;
 }
 
-.delete-btn {
-  background-color: red !important; /* Force red background */
-  color: white !important; /* Ensure text is white */
-  border: none;
+/* ========== Action Buttons ========== */
+.action-column {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  min-width: 140px;
+}
+
+.edit-btn, .delete-btn {
   padding: 8px 12px;
+  border: none;
   cursor: pointer;
   border-radius: 5px;
   transition: background 0.3s ease;
 }
 
+.edit-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.delete-btn {
+  background-color: red;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #0056b3;
+}
+
 .delete-btn:hover {
-  background-color: darkred !important; /* Darker red on hover */
+  background-color: darkred;
 }
 
-.date-picker {
-  padding: 8px;
-  font-size: 14px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  background-color: white;
-  width: 150px;
-  text-align: center;
-  cursor: pointer;
-}
-
-.date-picker:hover {
-  border-color: #007bff;
-}
-
-.filter-container {
+/* ========== Edit Modal (Centered Pop-up) ========== */
+.edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  gap: 10px;
   justify-content: center;
-  margin-bottom: 15px;
+  align-items: center;
+  z-index: 1000;
 }
 
-.filter-container select {
+/* Edit Modal Box */
+.edit-modal {
+  background: white;
+  padding: 20px;
+  width: 450px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  position: relative;
+}
+
+/* Edit Form */
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Align labels and input fields */
+.form-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.form-group label {
+  flex: 1;
+  text-align: left;
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  flex: 2;
+  width: 100%;
   padding: 8px;
-  font-size: 14px;
-  border-radius: 5px;
   border: 1px solid #ccc;
-  background-color: white;
+  border-radius: 4px;
+}
+
+/* Modal Action Buttons */
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+/* Update & Cancel Button Styles */
+.update-btn, .cancel-btn {
+  padding: 8px 15px;
+  border: none;
   cursor: pointer;
+  border-radius: 5px;
+}
+
+.update-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.cancel-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.update-btn:hover {
+  background-color: #218838;
+}
+
+.cancel-btn:hover {
+  background-color: #c82333;
+}
+
+/* Spacing between Update and Cancel buttons */
+.modal-actions button {
+  margin-right: 10px;
 }
