@@ -32,7 +32,7 @@ This document provides details on the unit and system tests performed on the Ris
   2. Verify that the data is parsed correctly
   3. Ensure entries are stored in MongoDB
 - **Expected Result:** Data should be successfully stored in the database.
-- **Test Status:** *In Progress*
+- **Test Status:** Passed on *[3-30-25]* (Test log below)
 
 ---
 
@@ -40,7 +40,7 @@ This document provides details on the unit and system tests performed on the Ris
 | Test Name          | API Endpoint       | Status  | Last Run  |
 |--------------------|-------------------|---------|-----------|
 | `test_pdf_export` | `/export_pdf/`     |  Passed | *[3-30-25]*  |
-| `test_csv_upload` | `/upload_csv/`     | In Progress | *[TBD]*  |
+| `test_csv_upload` | `/upload_csv/`     | Passed | *[3-30-25]*  |
 
 ---
 

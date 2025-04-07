@@ -3,11 +3,13 @@ import axios from "axios";
 import SearchBar from "../components/SearchBar";
 import Filter from "../components/Filter";
 import EditModal from "../components/EditModal";
+import ClusterChart from "../components/ClusterChart";
 import "../styles/Dashboard.css";
 
 function Dashboard() {
   const [threats, setThreats] = useState([]);
   const [editThreat, setEditThreat] = useState(null);
+  const [clusteredData, setClusteredData] = useState([]);
   const [filters, setFilters] = useState({
     searchQuery: "",
     severity: "All",
@@ -17,21 +19,9 @@ function Dashboard() {
     endDate: "",
   });
 
-  // Threat Types & US States
-  const threatTypes = ["Data Leak", "Denial of Service", "Exploit", "Injection", "Malware", "Network Anomaly", "Phishing", "Ransomware", "Unauthorized Access"];
-  const usStates = [
-    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
-    "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
-    "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi",
-    "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico",
-    "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
-    "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
-    "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
-  ];
-
-  // Fetch threats from backend
   useEffect(() => {
     fetchThreats();
+    fetchClusteredData();
   }, [filters]);
 
   const fetchThreats = () => {
@@ -48,7 +38,28 @@ function Dashboard() {
       .catch((error) => console.error("Error fetching threats:", error));
   };
 
-  // Format Date for Display
+  const fetchClusteredData = () => {
+    const params = new URLSearchParams();
+  
+    if (filters.severity !== "All") params.append("severity", filters.severity);
+    if (filters.location !== "All") params.append("location", filters.location);
+    if (filters.startDate) params.append("start_date", filters.startDate);
+    if (filters.endDate) params.append("end_date", filters.endDate);
+  
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+  
+    axios
+      .get(`http://127.0.0.1:8000/threats/clusters${queryString}`)
+      .then((res) => {
+        console.log("Clustered data received:", res.data);
+        setClusteredData(res.data);
+      })
+      .catch((err) => {
+        console.error("Error fetching clusters:", err);
+        setClusteredData([]);
+      });
+  };
+
   const formatDate = (dateString) => {
     if (!dateString || isNaN(Date.parse(dateString))) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -58,7 +69,6 @@ function Dashboard() {
     });
   };
 
-  // **Fix: Correct Search Functionality**
   const filteredThreats = threats.filter((threat) => {
     const { searchQuery, severity, type, location } = filters;
 
@@ -70,27 +80,29 @@ function Dashboard() {
     const matchesSearch =
       searchQuery === "" ||
       Object.values(threat)
-        .map((value) => (value !== null && value !== undefined ? value.toString().toLowerCase() : ""))
+        .map((value) =>
+          value !== null && value !== undefined ? value.toString().toLowerCase() : ""
+        )
         .some((value) => value.includes(searchStr));
 
     return matchesSeverity && matchesType && matchesLocation && matchesSearch;
   });
 
-  // Open Edit Modal & Populate Fields
   const handleEdit = (threat) => {
     setEditThreat({ ...threat });
   };
 
-  // Handle Input Changes in Edit Modal
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditThreat((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Update Threat in Database
   const handleUpdate = async () => {
     try {
-      const response = await axios.put(`http://127.0.0.1:8000/threats/${editThreat._id}`, editThreat);
+      const response = await axios.put(
+        `http://127.0.0.1:8000/threats/${editThreat._id}`,
+        editThreat
+      );
       if (response.status === 200) {
         setThreats(threats.map((t) => (t._id === editThreat._id ? editThreat : t)));
         setEditThreat(null);
@@ -100,22 +112,20 @@ function Dashboard() {
     }
   };
 
-  // Delete Threat
   const handleDelete = async (threatId) => {
-    console.log("Attempting to delete threat with ID:", threatId); // Debugging Log
     if (!window.confirm("Are you sure you want to delete this threat?")) return;
-  
+
     try {
       const response = await axios.delete(`http://127.0.0.1:8000/threats/${threatId}`);
-  
+
       if (response.status === 200 || response.status === 204) {
-        console.log("Threat deleted successfully:", threatId);
-        setThreats((prevThreats) => prevThreats.filter((threat) => String(threat._id) !== String(threatId)));
+        setThreats((prevThreats) =>
+          prevThreats.filter((threat) => String(threat._id) !== String(threatId))
+        );
       } else {
         throw new Error(`Unexpected response status: ${response.status}`);
       }
     } catch (error) {
-      console.error("Delete error:", error.response?.data || error);
       alert(`Failed to delete threat: ${error.response?.data?.detail || "Unknown error"}`);
     }
   };
@@ -123,6 +133,16 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <h1 className="dashboard-title">Threat Dashboard</h1>
+
+      {/* Cluster Chart */}
+      <div className="chart-container">
+        <h2>Clustered Threats Visualization</h2>
+        {clusteredData.length > 0 ? (
+          <ClusterChart data={clusteredData} />
+        ) : (
+          <p>No clustering data available yet.</p>
+        )}
+      </div>
 
       {/* Search & Filter Controls */}
       <div className="controls">
@@ -162,35 +182,36 @@ function Dashboard() {
           </tr>
         </thead>
         <tbody>
-  {filteredThreats.map((threat) => (
-    <tr key={threat._id}>
-      <td>{threat.title.trim()}</td>
-      <td>{threat.description.trim()}</td>
-      <td>{threat.severity.trim()}</td>
-      <td>{threat.type.trim()}</td>
-      <td>{threat.location.trim()}</td>
-      <td>{formatDate(threat.date)}</td>
-      <td className="action-column">
-        <button className="edit-btn" onClick={() => handleEdit(threat)}>Edit</button>
-        <button className="delete-btn" onClick={() => handleDelete(threat._id)}>Delete</button>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
+          {filteredThreats.map((threat) => (
+            <tr key={threat._id}>
+              <td>{threat.title.trim()}</td>
+              <td>{threat.description.trim()}</td>
+              <td>{threat.severity.trim()}</td>
+              <td>{threat.type.trim()}</td>
+              <td>{threat.location.trim()}</td>
+              <td>{formatDate(threat.date)}</td>
+              <td className="action-column">
+                <button className="edit-btn" onClick={() => handleEdit(threat)}>
+                  Edit
+                </button>
+                <button className="delete-btn" onClick={() => handleDelete(threat._id)}>
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
       </table>
 
       {/* Edit Modal */}
-{editThreat && (
-  <EditModal
-    editThreat={editThreat}
-    setEditThreat={setEditThreat}
-    onUpdate={handleUpdate}
-    setThreats={setThreats} //  Pass setThreats here
-  />
-)}
-
-
+      {editThreat && (
+        <EditModal
+          editThreat={editThreat}
+          setEditThreat={setEditThreat}
+          onUpdate={handleUpdate}
+          setThreats={setThreats}
+        />
+      )}
     </div>
   );
 }

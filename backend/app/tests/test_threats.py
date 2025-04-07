@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from datetime import datetime
 from bson import ObjectId
-from app.main import app  # Explicit import from the `app` package
+from backend.main import app  # Explicit import from the `app` package
 
 # Initialize test client
 client = TestClient(app)

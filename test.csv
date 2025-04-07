@@ -1,0 +1,3 @@
+threat_id,title,description,severity,type,location,date
+1,Unauthorized Access,User gained access without permission,High,Intrusion,New York,2025-03-30
+2,Phishing Attack,Email scam targeting employees,Medium,Phishing,California,2025-03-29

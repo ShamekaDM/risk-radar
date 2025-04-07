@@ -1,19 +1,28 @@
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File, status
 from pymongo import MongoClient
 from datetime import datetime
 from bson import ObjectId
+import io
 import os
+import csv
+import pandas as pd
+from io import StringIO
 from typing import List, Optional
+from fastapi.responses import Response
+from backend.app.utils.pdf_generator import generate_pdf
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import LabelEncoder
 
-#  Ensure the database name is correct
+# Ensure the database name is correct
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 client = MongoClient(MONGO_URI)
 db = client["RiskRadar"]  # Ensure this matches `seed_data.py`
-threats_collection = db["threats"]  #  Define the collection properly
+threats_collection = db["threats"]  # Define the collection properly
+report_logs_collection = db["report_logs"]
 
 router = APIRouter(prefix="/threats", tags=["threats"])
 
-#  GET: Fetch threats with optional filters
+# GET: Fetch threats with optional filters
 @router.get("/", response_model=List[dict])
 async def get_threats(
     severity: Optional[str] = Query(None, description="Filter by severity"),
@@ -28,7 +37,6 @@ async def get_threats(
     if location:
         query["location"] = location
 
-    #  Ensure date filtering is correctly formatted
     if start_date or end_date:
         try:
             date_query = {}
@@ -42,20 +50,18 @@ async def get_threats(
 
     threats = list(threats_collection.find(query, {"_id": 1, "title": 1, "description": 1, "severity": 1, "location": 1, "type": 1, "date": 1}))
 
-    #  Convert `_id` to string and ensure `date` is returned as ISO format
     for threat in threats:
         threat["_id"] = str(threat["_id"])
         if "date" in threat and isinstance(threat["date"], datetime):
-            threat["date"] = threat["date"].isoformat()  # Convert datetime to string
+            threat["date"] = threat["date"].isoformat()
 
     return threats
 
-#  DELETE: Remove a threat by ID
+# DELETE: Remove a threat by ID
 @router.delete("/{threat_id}")
 async def delete_threat(threat_id: str):
-    """Delete a threat by ID in MongoDB"""
     try:
-        obj_id = ObjectId(threat_id)  # Convert ID
+        obj_id = ObjectId(threat_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid ObjectId format")
 
@@ -69,57 +75,178 @@ async def delete_threat(threat_id: str):
 
     return {"message": "Threat deleted successfully"}
 
-#  POST: Add a new threat
+# POST: Add a new threat
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def add_threat(request: Request):
-    """Add a new threat to MongoDB"""
     threat_data = await request.json()
 
-    #  Validate required fields
     required_fields = ["title", "description", "severity", "type", "location", "date"]
     for field in required_fields:
         if field not in threat_data:
             raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
 
-    #  Convert date to datetime object
     try:
         threat_data["date"] = datetime.fromisoformat(threat_data["date"])
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use ISO format.")
 
-    #  Insert into MongoDB
     inserted = threats_collection.insert_one(threat_data)
-    threat_data["_id"] = str(inserted.inserted_id)  # Convert ObjectId to string
+    threat_data["_id"] = str(inserted.inserted_id)
     return threat_data
 
-#  PUT: Update an existing threat
+# PUT: Update an existing threat
 @router.put("/{threat_id}")
 async def update_threat(threat_id: str, threat_data: dict):
-    """Update a threat by ID and automatically update the date to the current date/time."""
     try:
-        obj_id = ObjectId(threat_id)  # Convert to ObjectId
+        obj_id = ObjectId(threat_id)
     except:
-        print(f" Invalid ObjectId format: {threat_id}")
         raise HTTPException(status_code=400, detail="Invalid Threat ID format")
 
-    #  Log received data before updating
-    print(f" Received update request for ID: {threat_id} with data: {threat_data}")
-
-    #  Ensure `_id` is not included in the update
     if "_id" in threat_data:
-        del threat_data["_id"]  #  Remove `_id` to avoid modification error
+        del threat_data["_id"]
 
-    #  Automatically update date to the current datetime
     threat_data["date"] = datetime.utcnow().isoformat()
 
     update_result = db.threats.update_one({"_id": obj_id}, {"$set": threat_data})
 
-    #  Log the update result
-    print(f"🛠 MongoDB Update Result: {update_result.raw_result}")
-
     if update_result.matched_count == 0:
-        print(f" No matching threat found for ID: {threat_id}")
         raise HTTPException(status_code=404, detail="Threat not found")
 
-    print(f" Threat updated successfully with new date: {threat_data['date']}")
     return {"message": "Threat updated successfully", "updated_date": threat_data["date"]}
+
+# GET: Export PDF + log timestamp
+@router.get("/export/pdf", response_class=Response)
+async def export_pdf():
+    threats = list(db.threats.find({}, {"_id": 0, "title": 1, "severity": 1, "type": 1, "location": 1}))
+
+    if not threats:
+        raise HTTPException(status_code=404, detail="No threats found to export.")
+
+    report_logs_collection.insert_one({"generated_at": datetime.utcnow()})
+
+    pdf_buffer = generate_pdf(threats)
+
+    return Response(
+        content=pdf_buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=threat_report.pdf"}
+    )
+
+# GET: List report logs
+@router.get("/report_logs/", response_model=List[str])
+async def get_report_logs():
+    logs = report_logs_collection.find().sort("generated_at", -1)
+    return [log["generated_at"].isoformat() for log in logs]
+
+# DELETE: Clear report logs
+@router.delete("/report_logs/")
+async def clear_report_logs():
+    result = report_logs_collection.delete_many({})
+    return {"deleted": result.deleted_count}
+
+# POST: Upload CSV
+@router.post("/upload_csv/", status_code=status.HTTP_200_OK)
+async def upload_csv(file: UploadFile = File(None)):
+    if file is None:
+        raise HTTPException(status_code=400, detail="No file was provided")
+
+    try:
+        contents = await file.read()
+        decoded = contents.decode("utf-8")
+
+        print("CSV Decoded Content:\n", decoded)  # Log raw CSV content
+
+        df = pd.read_csv(io.StringIO(decoded))
+        print("Parsed DataFrame:\n", df.head())  # Log first few rows
+
+        if df.empty:
+            raise HTTPException(status_code=400, detail="CSV file is empty")
+
+        required_columns = {"title", "description", "severity", "type", "location", "date"}
+        if not required_columns.issubset(set(df.columns)):
+            raise HTTPException(status_code=400, detail="Invalid CSV format. Missing required columns.")
+
+        # Validate and format data
+        threats_to_insert = []
+        for index, row in df.iterrows():
+            try:
+                threat = {
+                    "title": str(row["title"]).strip(),
+                    "description": str(row["description"]).strip(),
+                    "severity": str(row["severity"]).strip(),
+                    "type": str(row["type"]).strip(),
+                    "location": str(row["location"]).strip(),
+                    "date": datetime.fromisoformat(str(row["date"]).strip())  # Must be ISO format
+                }
+                threats_to_insert.append(threat)
+            except Exception as e:
+                print(f"Row {index} skipped due to error: {e}")
+
+        if not threats_to_insert:
+            return {"message": "CSV uploaded but no valid threats to insert.", "filename": file.filename}
+
+        inserted = threats_collection.insert_many(threats_to_insert)
+        return {
+            "message": f"CSV uploaded successfully. Inserted {len(inserted.inserted_ids)} threats.",
+            "filename": file.filename
+        }
+
+    except pd.errors.EmptyDataError:
+        raise HTTPException(status_code=400, detail="CSV file is empty")
+
+    except pd.errors.ParserError:
+        raise HTTPException(status_code=400, detail="Invalid CSV format")
+
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@router.get("/clusters", response_model=List[dict])
+async def get_threat_clusters(
+    severity: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    k: int = 3,
+):
+    query = {}
+
+    if severity:
+        query["severity"] = severity
+    if location:
+        query["location"] = location
+
+    if start_date or end_date:
+        try:
+            date_query = {}
+            if start_date:
+                date_query["$gte"] = datetime.strptime(start_date, "%Y-%m-%d")
+            if end_date:
+                date_query["$lte"] = datetime.strptime(end_date, "%Y-%m-%d")
+            query["date"] = date_query
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    threats = list(threats_collection.find(query, {
+        "_id": 1, "title": 1, "severity": 1, "type": 1, "location": 1
+    }))
+
+    if not threats:
+        return []
+
+    df = pd.DataFrame(threats)
+
+    encoders = {}
+    for col in ["severity", "type", "location"]:
+        encoder = LabelEncoder()
+        df[col] = encoder.fit_transform(df[col].astype(str))
+        encoders[col] = encoder
+
+    kmeans = KMeans(n_clusters=min(k, len(df)), random_state=0)
+    df["cluster"] = kmeans.fit_predict(df[["severity", "type", "location"]])
+
+    clustered_data = df.to_dict(orient="records")
+    for item in clustered_data:
+        item["_id"] = str(item["_id"])
+
+    return clustered_data

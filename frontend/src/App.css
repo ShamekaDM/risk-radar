@@ -36,3 +36,28 @@
     transform: rotate(360deg);
   }
 }
+
+.page-container {
+  border: 8px solid navy;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 1200px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background-color: white;
+}
+
+/* Shared container for chart + table */
+.visual-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  gap: 2rem;
+}
+
+.chart-box,
+.table-box {
+  width: 100%;
+  max-width: 1000px;
+}
