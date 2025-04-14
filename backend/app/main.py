@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.routes import threats
+from app.routes import threats
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from contextlib import asynccontextmanager

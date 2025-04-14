@@ -7,6 +7,9 @@ import ReportsPage from './pages/ReportsPage';
 import Navbar from './components/Navbar';
 import UploadCSVPage from './pages/UploadCSVPage';
 import ThreatClusters from './pages/ThreatClusters';
+import ThreatMap from './components/ThreatMap';
+//import ThreatMapPage from "./pages/ThreatMapPage";
+
 
 
 function App() {
@@ -21,9 +24,15 @@ function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/upload-csv" element={<UploadCSVPage />} />
         <Route path="/clusters" element={<ThreatClusters />} />
+        <Route path="/map" element={<ThreatMap />} />
+       
       </Routes>
     </Router>
   );
 }
 
 export default App;
+
+
+//<Route path="/" element={<ThreatMapPage />} />
+// 

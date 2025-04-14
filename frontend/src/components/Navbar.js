@@ -20,7 +20,7 @@ const Navbar = () => {
         <li><Link to="/settings">Settings</Link></li>
         <li><Link to="/reports">Reports</Link></li>
         <li><Link to="/upload-csv">Upload CSV</Link></li>
-        <li><Link to="/clusters">Threat Clusters</Link></li>
+        <li><Link to="/clusters">Threat Map</Link></li>
       </ul>
     </nav>
   );

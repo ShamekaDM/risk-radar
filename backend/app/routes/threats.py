@@ -9,15 +9,15 @@ import pandas as pd
 from io import StringIO
 from typing import List, Optional
 from fastapi.responses import Response
-from backend.app.utils.pdf_generator import generate_pdf
+from app.utils.pdf_generator import generate_pdf
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder
 
 # Ensure the database name is correct
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 client = MongoClient(MONGO_URI)
-db = client["RiskRadar"]  # Ensure this matches `seed_data.py`
-threats_collection = db["threats"]  # Define the collection properly
+db = client["RiskRadar"]
+threats_collection = db["threats"]
 report_logs_collection = db["report_logs"]
 
 router = APIRouter(prefix="/threats", tags=["threats"])
@@ -154,10 +154,7 @@ async def upload_csv(file: UploadFile = File(None)):
         contents = await file.read()
         decoded = contents.decode("utf-8")
 
-        print("CSV Decoded Content:\n", decoded)  # Log raw CSV content
-
         df = pd.read_csv(io.StringIO(decoded))
-        print("Parsed DataFrame:\n", df.head())  # Log first few rows
 
         if df.empty:
             raise HTTPException(status_code=400, detail="CSV file is empty")
@@ -166,7 +163,6 @@ async def upload_csv(file: UploadFile = File(None)):
         if not required_columns.issubset(set(df.columns)):
             raise HTTPException(status_code=400, detail="Invalid CSV format. Missing required columns.")
 
-        # Validate and format data
         threats_to_insert = []
         for index, row in df.iterrows():
             try:
@@ -176,7 +172,7 @@ async def upload_csv(file: UploadFile = File(None)):
                     "severity": str(row["severity"]).strip(),
                     "type": str(row["type"]).strip(),
                     "location": str(row["location"]).strip(),
-                    "date": datetime.fromisoformat(str(row["date"]).strip())  # Must be ISO format
+                    "date": datetime.fromisoformat(str(row["date"]).strip())
                 }
                 threats_to_insert.append(threat)
             except Exception as e:
@@ -200,7 +196,7 @@ async def upload_csv(file: UploadFile = File(None)):
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
-    
+
 @router.get("/clusters", response_model=List[dict])
 async def get_threat_clusters(
     severity: Optional[str] = Query(None),
@@ -228,13 +224,19 @@ async def get_threat_clusters(
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
 
     threats = list(threats_collection.find(query, {
-        "_id": 1, "title": 1, "severity": 1, "type": 1, "location": 1
+        "_id": 1, "title": 1, "severity": 1, "type": 1, "location": 1, "latitude": 1, "longitude": 1
     }))
 
     if not threats:
         return []
 
     df = pd.DataFrame(threats)
+
+    if "latitude" not in df.columns or "longitude" not in df.columns:
+        raise HTTPException(status_code=500, detail="Missing latitude/longitude fields in data.")
+
+    df["latitude_raw"] = df["latitude"]
+    df["longitude_raw"] = df["longitude"]
 
     encoders = {}
     for col in ["severity", "type", "location"]:
@@ -245,8 +247,58 @@ async def get_threat_clusters(
     kmeans = KMeans(n_clusters=min(k, len(df)), random_state=0)
     df["cluster"] = kmeans.fit_predict(df[["severity", "type", "location"]])
 
+    df["latitude"] = df["latitude_raw"]
+    df["longitude"] = df["longitude_raw"]
+    df.drop(columns=["latitude_raw", "longitude_raw"], inplace=True)
+
     clustered_data = df.to_dict(orient="records")
     for item in clustered_data:
         item["_id"] = str(item["_id"])
 
     return clustered_data
+
+@router.get("/map_threats", response_model=List[dict])
+async def get_threats_with_coordinates(
+    severity: Optional[str] = Query(None),
+    type: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+):
+    query = {
+        "latitude": {"$exists": True},
+        "longitude": {"$exists": True},
+    }
+
+    if severity:
+        query["severity"] = severity
+    if type:
+        query["type"] = type
+    if location:
+        query["location"] = location
+
+    if start_date or end_date:
+        try:
+            date_query = {}
+            if start_date:
+                date_query["$gte"] = datetime.strptime(start_date, "%Y-%m-%d")
+            if end_date:
+                date_query["$lte"] = datetime.strptime(end_date, "%Y-%m-%d")
+            query["date"] = date_query
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    threats = list(threats_collection.find(query, {
+        "_id": 1,
+        "title": 1,
+        "severity": 1,
+        "type": 1,
+        "location": 1,
+        "latitude": 1,
+        "longitude": 1
+    }))
+
+    for threat in threats:
+        threat["_id"] = str(threat["_id"])
+
+    return threats
